@@ -6,9 +6,9 @@ categories: [Secure Boot, UEFI, EDK2, openSSL]
 image: "uefi_logo.png"
 ---
 
-Secure Boot has becoming more popular in the past few years in the consumer PC segment due to the new windows 11 secure boot requirement. I have read several [tutorials](https://github.com/perez987/OpenCore-UEFI-Secure-Boot) on this topic and even have successfully enrolled my own certificate for self-signing my own [OpenCore](https://github.com/acidanthera/OpenCorePkg) bootloader to support Secure Boot.
+Secure Boot has becoming more popular in the past few years in the consumer PC segment due to the new windows 11 secure boot requirement. I wanted to explore more in detail on how UEFI Secure Boot works and how to implement part of this Security validation process using Python as proof of concept.
 
-I wanted to explore more in detail on how UEFI Secure Boot works and how to implement part of this Security validation process using Python as proof of concept.
+Following this [tutorial]((https://github.com/perez987/OpenCore-UEFI-Secure-Boot)), I have successfully enrolled my own certificate for self-signing the [OpenCore](https://github.com/acidanthera/OpenCorePkg) bootloader to support Secure Boot.
 
 
 
