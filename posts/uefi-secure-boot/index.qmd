@@ -20,6 +20,6 @@ unzip opencore.zip -d opencore
 # Generate an Image Signing Key (ISK) using openSSL
 openssl req -new -x509 -newkey rsa:2048 -sha256 -days 365 -subj "/CN=Image Signing Key" -keyout ISK.key -out ISK.pem
 # Using sbsign to sign the image. This app is part of sbsigntools
-sbsign --key ISK.key --cert ISK.pem opencore/X64/BOOT/BOOTx64.efi --output opencore/X64/BOOT/BOOTx64_signed.efi
+sbsign --key ISK.key --cert ISK.pem opencore/X64/EFI/BOOT/BOOTx64.efi --output opencore/X64/EFI/BOOT/BOOTx64_signed.efi
 ```
 
