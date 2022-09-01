@@ -6,9 +6,20 @@ categories: [Secure Boot, UEFI, EDK2, openSSL]
 image: "uefi_logo.png"
 ---
 
-Secure Boot has becoming more popular in the past few years in the consumer PC segment due to the new windows 11 secure boot requirement. I wanted to explore more in detail on how UEFI Secure Boot works and how to implement part of this Security validation process using Python as proof of concept.
+Secure Boot has becoming more popular in the past few years in the consumer PC segment due to the new windows 11 [Secure Boot requirement](https://www.windowscentral.com/how-enable-secure-boot-pc-install-windows-11). I wanted to learn more about Secure Boot by implementing part of this security validation process using Python as proof of concept.
 
 Following this [tutorial](https://github.com/perez987/OpenCore-UEFI-Secure-Boot), I have successfully enrolled my own certificate for self-signing the [OpenCore](https://github.com/acidanthera/OpenCorePkg) bootloader to support Secure Boot.
 
+Let's explore what happens when you sign an UEFI image. I recommend using an Ubuntu VM to have access to [sbsign tool](https://manpages.ubuntu.com/manpages/xenial/man1/sbsign.1.html) for UEFI development so you can follow the below commands: 
 
+```bash
+# Download opencore so you can get a clean unsigned UEFI application (You can use any .efi app so it doesn't have to be OpenCore)
+curl -L https://github.com/acidanthera/OpenCorePkg/releases/download/0.8.3/OpenCore-0.8.3-RELEASE.zip > opencore.zip
+unzip opencore.zip -d opencore
+
+# Generate an Image Signing Key (ISK) using openSSL
+openssl req -new -x509 -newkey rsa:2048 -sha256 -days 365 -subj "/CN=Image Signing Key" -keyout ISK.key -out ISK.pem
+# Using sbsign to sign the image. This app is part of sbsigntools
+sbsign --key ISK.key --cert ISK.pem opencore/X64/BOOT/BOOTx64.efi --output opencore/X64/BOOT/BOOTx64_signed.efi
+```
 
