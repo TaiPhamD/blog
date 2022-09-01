@@ -4,7 +4,7 @@
     "href": "posts/uefi-secure-boot/index.html",
     "title": "UEFI Secure Boot",
     "section": "",
-    "text": "I wanted to explore more in detail on how UEFI Secure Boot works and how to implement part of this Security validation process using Python as proof of concept."
+    "text": "Following this tutorial, I have successfully enrolled my own certificate for self-signing the OpenCore bootloader to support Secure Boot."
   },
   {
     "objectID": "index.html",
