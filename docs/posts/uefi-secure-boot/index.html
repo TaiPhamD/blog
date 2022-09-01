@@ -2,7 +2,7 @@
 <html xmlns="http://www.w3.org/1999/xhtml" lang="en" xml:lang="en"><head>
 
 <meta charset="utf-8">
-<meta name="generator" content="quarto-1.1.175">
+<meta name="generator" content="quarto-1.1.165">
 
 <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
 
@@ -202,7 +202,7 @@ code span.wa { color: #60a0b0; font-weight: bold; font-style: italic; } /* Warni
 
 
 
-<p>Secure Boot has becoming more popular in the past few years in the consumer PC segment due to the new windows 11 <a href="https://www.windowscentral.com/how-enable-secure-boot-pc-install-windows-11">Secure Boot requirement</a>. I wanted to learn more about Secure Boot by implementing part of this security validation process using Python as proof of concept.</p>
+<p>Secure Boot has becoming more popular in the past few years in the consumer PC segment due to the new windows 11 <a href="https://www.windowscentral.com/how-enable-secure-boot-pc-install-windows-11">Secure Boot requirement</a>. I wanted to learn more about Secure Boot by implementing part of UEFI security validation process using Python as proof of concept.</p>
 <p>Following this <a href="https://github.com/perez987/OpenCore-UEFI-Secure-Boot">tutorial</a>, I have successfully enrolled my own certificate for self-signing the <a href="https://github.com/acidanthera/OpenCorePkg">OpenCore</a> bootloader to support Secure Boot.</p>
 <p>Let’s explore what happens when you sign an UEFI image. I recommend using an Ubuntu VM to have access to <a href="https://manpages.ubuntu.com/manpages/xenial/man1/sbsign.1.html">sbsign tool</a> for UEFI development so you can follow the below commands:</p>
 <div class="sourceCode" id="cb1"><pre class="sourceCode bash code-with-copy"><code class="sourceCode bash"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a><span class="co"># Download opencore so you can get a clean unsigned UEFI application (You can use any .efi app so it doesn't have to be OpenCore)</span></span>
@@ -212,7 +212,180 @@ code span.wa { color: #60a0b0; font-weight: bold; font-style: italic; } /* Warni
 <span id="cb1-5"><a href="#cb1-5" aria-hidden="true" tabindex="-1"></a><span class="co"># Generate an Image Signing Key (ISK) using openSSL</span></span>
 <span id="cb1-6"><a href="#cb1-6" aria-hidden="true" tabindex="-1"></a><span class="ex">openssl</span> req <span class="at">-new</span> <span class="at">-x509</span> <span class="at">-newkey</span> rsa:2048 <span class="at">-sha256</span> <span class="at">-days</span> 365 <span class="at">-subj</span> <span class="st">"/CN=Image Signing Key"</span> <span class="at">-keyout</span> ISK.key <span class="at">-out</span> ISK.pem</span>
 <span id="cb1-7"><a href="#cb1-7" aria-hidden="true" tabindex="-1"></a><span class="co"># Using sbsign to sign the image. This app is part of sbsigntools</span></span>
-<span id="cb1-8"><a href="#cb1-8" aria-hidden="true" tabindex="-1"></a><span class="ex">sbsign</span> <span class="at">--key</span> ISK.key <span class="at">--cert</span> ISK.pem opencore/X64/BOOT/BOOTx64.efi <span class="at">--output</span> opencore/X64/BOOT/BOOTx64_signed.efi</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<span id="cb1-8"><a href="#cb1-8" aria-hidden="true" tabindex="-1"></a><span class="ex">sbsign</span> <span class="at">--key</span> ISK.key <span class="at">--cert</span> ISK.pem opencore/X64/EFI/BOOT/BOOTx64.efi <span class="at">--output</span> opencore/X64/EFI/BOOT/BOOTx64_signed.efi</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<p>We can run the following Python code to see the file size differences:</p>
+<div class="cell" data-execution_count="1">
+<details>
+<summary>Code</summary>
+<div class="sourceCode cell-code" id="cb2"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb2-1"><a href="#cb2-1" aria-hidden="true" tabindex="-1"></a><span class="co"># Print file size of unsigned and signed image</span></span>
+<span id="cb2-2"><a href="#cb2-2" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb2-3"><a href="#cb2-3" aria-hidden="true" tabindex="-1"></a><span class="cf">with</span> <span class="bu">open</span>(<span class="st">"opencore/X64/EFI/BOOT/BOOTx64.efi"</span>, mode<span class="op">=</span><span class="st">"rb"</span>) <span class="im">as</span> <span class="bu">file</span>:  <span class="co"># b is important -&gt; binary</span></span>
+<span id="cb2-4"><a href="#cb2-4" aria-hidden="true" tabindex="-1"></a>    unsigned_image <span class="op">=</span> <span class="bu">file</span>.read()</span>
+<span id="cb2-5"><a href="#cb2-5" aria-hidden="true" tabindex="-1"></a>    <span class="bu">print</span>(<span class="st">"Unsigned image file size :"</span>, <span class="bu">len</span>(unsigned_image))</span>
+<span id="cb2-6"><a href="#cb2-6" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb2-7"><a href="#cb2-7" aria-hidden="true" tabindex="-1"></a><span class="cf">with</span> <span class="bu">open</span>(<span class="st">"opencore/X64/EFI/BOOT/BOOTx64_signed.efi"</span>, mode<span class="op">=</span><span class="st">"rb"</span>) <span class="im">as</span> <span class="bu">file</span>:  <span class="co"># b is important -&gt; binary</span></span>
+<span id="cb2-8"><a href="#cb2-8" aria-hidden="true" tabindex="-1"></a>    signed_image <span class="op">=</span> <span class="bu">file</span>.read()</span>
+<span id="cb2-9"><a href="#cb2-9" aria-hidden="true" tabindex="-1"></a>    <span class="bu">print</span>(<span class="st">"Signed image file size :"</span>, <span class="bu">len</span>(signed_image))</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</details>
+<div class="cell-output cell-output-stdout">
+<pre><code>Unsigned image file size : 20484
+Signed image file size : 22056</code></pre>
+</div>
+</div>
+<p>As we can see the signed image increased by 1572 Bytes. This is because the signature is added to the original image. Now we will try to extract the signed certificate from the signed image. The UEFI image uses a Microsoft PE file system as described <a href="https://docs.microsoft.com/en-us/windows/win32/debug/pe-format">here</a>. We can extract the certificate using the following steps:</p>
+<ul>
+<li>Locate the PE header by finding PE header offset from <strong>0x3C</strong> file offset</li>
+<li>Read Optional Header immediate after the PE header to read the <strong>Magic</strong> code to determine offset for PE vs PE+ to get to the <strong>Certificate Table</strong></li>
+<li>Extract each certificate by assuming the first certificate will start at the Certificate Table VirtualAddress. Then the next certificate will be 8-byte aligned from the end of the previous certificate. We will loop until the offset exceed the Certificate Table VirtualAddress + Size.</li>
+</ul>
+<div class="cell" data-execution_count="2">
+<details>
+<summary>Code</summary>
+<div class="sourceCode cell-code" id="cb4"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb4-1"><a href="#cb4-1" aria-hidden="true" tabindex="-1"></a><span class="co"># per microsoft PE/COFF spec, the first 4 bytes at 0x3c offset will point to the start of the PE header</span></span>
+<span id="cb4-2"><a href="#cb4-2" aria-hidden="true" tabindex="-1"></a>pe_header <span class="op">=</span> signed_image[<span class="bn">0x3C</span> : <span class="bn">0x3C</span> <span class="op">+</span> <span class="dv">4</span>]</span>
+<span id="cb4-3"><a href="#cb4-3" aria-hidden="true" tabindex="-1"></a>pe_header_offset <span class="op">=</span> <span class="bu">int</span>.from_bytes(pe_header, <span class="st">"little"</span>) <span class="op">+</span> <span class="dv">4</span></span>
+<span id="cb4-4"><a href="#cb4-4" aria-hidden="true" tabindex="-1"></a><span class="bu">print</span>(<span class="st">"pe header offset :"</span>, pe_header_offset)</span>
+<span id="cb4-5"><a href="#cb4-5" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb4-6"><a href="#cb4-6" aria-hidden="true" tabindex="-1"></a><span class="co"># Decode PE header</span></span>
+<span id="cb4-7"><a href="#cb4-7" aria-hidden="true" tabindex="-1"></a><span class="im">import</span> ctypes</span>
+<span id="cb4-8"><a href="#cb4-8" aria-hidden="true" tabindex="-1"></a><span class="kw">class</span> PE_header(ctypes.Structure):</span>
+<span id="cb4-9"><a href="#cb4-9" aria-hidden="true" tabindex="-1"></a>    _fields_ <span class="op">=</span> (</span>
+<span id="cb4-10"><a href="#cb4-10" aria-hidden="true" tabindex="-1"></a>        (<span class="st">"Machine"</span>, ctypes.c_uint16),</span>
+<span id="cb4-11"><a href="#cb4-11" aria-hidden="true" tabindex="-1"></a>        (<span class="st">"NumberOfSections"</span>, ctypes.c_uint16),</span>
+<span id="cb4-12"><a href="#cb4-12" aria-hidden="true" tabindex="-1"></a>        (<span class="st">"TimeDateStamp"</span>, ctypes.c_uint32),</span>
+<span id="cb4-13"><a href="#cb4-13" aria-hidden="true" tabindex="-1"></a>        (<span class="st">"PointerToSymbolTable"</span>, ctypes.c_uint32),</span>
+<span id="cb4-14"><a href="#cb4-14" aria-hidden="true" tabindex="-1"></a>        (<span class="st">"NumberOfSymbols"</span>, ctypes.c_uint32),</span>
+<span id="cb4-15"><a href="#cb4-15" aria-hidden="true" tabindex="-1"></a>        (<span class="st">"SizeOfOptionalHeader"</span>, ctypes.c_uint16),</span>
+<span id="cb4-16"><a href="#cb4-16" aria-hidden="true" tabindex="-1"></a>        (<span class="st">"Characteristics"</span>, ctypes.c_uint16),</span>
+<span id="cb4-17"><a href="#cb4-17" aria-hidden="true" tabindex="-1"></a>    )</span>
+<span id="cb4-18"><a href="#cb4-18" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb4-19"><a href="#cb4-19" aria-hidden="true" tabindex="-1"></a>raw_pe_header <span class="op">=</span> signed_image[pe_header_offset : pe_header_offset <span class="op">+</span> ctypes.sizeof(PE_header)]</span>
+<span id="cb4-20"><a href="#cb4-20" aria-hidden="true" tabindex="-1"></a>pe_header <span class="op">=</span> PE_header.from_buffer_copy(raw_pe_header)</span>
+<span id="cb4-21"><a href="#cb4-21" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb4-22"><a href="#cb4-22" aria-hidden="true" tabindex="-1"></a><span class="co"># Print PE header</span></span>
+<span id="cb4-23"><a href="#cb4-23" aria-hidden="true" tabindex="-1"></a><span class="bu">print</span>(<span class="st">"PE header info: "</span>)</span>
+<span id="cb4-24"><a href="#cb4-24" aria-hidden="true" tabindex="-1"></a><span class="bu">print</span>(<span class="st">"</span><span class="ch">\t</span><span class="st">Machine :"</span>, <span class="bu">hex</span>(pe_header.Machine))</span>
+<span id="cb4-25"><a href="#cb4-25" aria-hidden="true" tabindex="-1"></a><span class="bu">print</span>(<span class="st">"</span><span class="ch">\t</span><span class="st">NumberOfSections :"</span>, pe_header.NumberOfSections)</span>
+<span id="cb4-26"><a href="#cb4-26" aria-hidden="true" tabindex="-1"></a><span class="bu">print</span>(<span class="st">"</span><span class="ch">\t</span><span class="st">TimeDateStamp :"</span>, pe_header.TimeDateStamp)</span>
+<span id="cb4-27"><a href="#cb4-27" aria-hidden="true" tabindex="-1"></a><span class="bu">print</span>(<span class="st">"</span><span class="ch">\t</span><span class="st">PointerToSymbolTable :"</span>, pe_header.PointerToSymbolTable)</span>
+<span id="cb4-28"><a href="#cb4-28" aria-hidden="true" tabindex="-1"></a><span class="bu">print</span>(<span class="st">"</span><span class="ch">\t</span><span class="st">NumberOfSymbols :"</span>, pe_header.NumberOfSymbols)</span>
+<span id="cb4-29"><a href="#cb4-29" aria-hidden="true" tabindex="-1"></a><span class="bu">print</span>(<span class="st">"</span><span class="ch">\t</span><span class="st">SizeOfOptionalHeader :"</span>, pe_header.SizeOfOptionalHeader)</span>
+<span id="cb4-30"><a href="#cb4-30" aria-hidden="true" tabindex="-1"></a><span class="bu">print</span>(<span class="st">"</span><span class="ch">\t</span><span class="st">Characteristics :"</span>, <span class="bu">hex</span>(pe_header.Characteristics))</span>
+<span id="cb4-31"><a href="#cb4-31" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb4-32"><a href="#cb4-32" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb4-33"><a href="#cb4-33" aria-hidden="true" tabindex="-1"></a><span class="co"># Decode Magic from optional header</span></span>
+<span id="cb4-34"><a href="#cb4-34" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb4-35"><a href="#cb4-35" aria-hidden="true" tabindex="-1"></a>raw_optional_header <span class="op">=</span> signed_image[</span>
+<span id="cb4-36"><a href="#cb4-36" aria-hidden="true" tabindex="-1"></a>    pe_header_offset</span>
+<span id="cb4-37"><a href="#cb4-37" aria-hidden="true" tabindex="-1"></a>    <span class="op">+</span> ctypes.sizeof(PE_header) : pe_header_offset</span>
+<span id="cb4-38"><a href="#cb4-38" aria-hidden="true" tabindex="-1"></a>    <span class="op">+</span> ctypes.sizeof(PE_header)</span>
+<span id="cb4-39"><a href="#cb4-39" aria-hidden="true" tabindex="-1"></a>    <span class="op">+</span> pe_header.SizeOfOptionalHeader</span>
+<span id="cb4-40"><a href="#cb4-40" aria-hidden="true" tabindex="-1"></a>]</span>
+<span id="cb4-41"><a href="#cb4-41" aria-hidden="true" tabindex="-1"></a>magic <span class="op">=</span> raw_optional_header[<span class="dv">0</span>:<span class="dv">2</span>]</span>
+<span id="cb4-42"><a href="#cb4-42" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb4-43"><a href="#cb4-43" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb4-44"><a href="#cb4-44" aria-hidden="true" tabindex="-1"></a><span class="cf">if</span> magic <span class="op">==</span> <span class="st">b"</span><span class="ch">\x0b\x01</span><span class="st">"</span>:</span>
+<span id="cb4-45"><a href="#cb4-45" aria-hidden="true" tabindex="-1"></a>    <span class="bu">print</span>(<span class="st">"Found a PE32 image"</span>)</span>
+<span id="cb4-46"><a href="#cb4-46" aria-hidden="true" tabindex="-1"></a>    cert_table_offset <span class="op">=</span> <span class="dv">128</span></span>
+<span id="cb4-47"><a href="#cb4-47" aria-hidden="true" tabindex="-1"></a><span class="cf">elif</span> magic <span class="op">==</span> <span class="st">b"</span><span class="ch">\x0b\x02</span><span class="st">"</span>:</span>
+<span id="cb4-48"><a href="#cb4-48" aria-hidden="true" tabindex="-1"></a>    <span class="bu">print</span>(<span class="st">"Found a PE32+ image"</span>)</span>
+<span id="cb4-49"><a href="#cb4-49" aria-hidden="true" tabindex="-1"></a>    cert_table_offset <span class="op">=</span> <span class="dv">144</span></span>
+<span id="cb4-50"><a href="#cb4-50" aria-hidden="true" tabindex="-1"></a><span class="cf">else</span>:</span>
+<span id="cb4-51"><a href="#cb4-51" aria-hidden="true" tabindex="-1"></a>    <span class="bu">print</span>(<span class="st">"Unknown PE magic"</span>)</span>
+<span id="cb4-52"><a href="#cb4-52" aria-hidden="true" tabindex="-1"></a>    exit()</span>
+<span id="cb4-53"><a href="#cb4-53" aria-hidden="true" tabindex="-1"></a>raw_cert_table <span class="op">=</span> raw_optional_header[cert_table_offset : cert_table_offset <span class="op">+</span> <span class="dv">8</span>]</span>
+<span id="cb4-54"><a href="#cb4-54" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb4-55"><a href="#cb4-55" aria-hidden="true" tabindex="-1"></a><span class="co"># Decode Optional Header Data Directory to get certificates</span></span>
+<span id="cb4-56"><a href="#cb4-56" aria-hidden="true" tabindex="-1"></a><span class="kw">class</span> DATA_Directory(ctypes.Structure):</span>
+<span id="cb4-57"><a href="#cb4-57" aria-hidden="true" tabindex="-1"></a>    _fields_ <span class="op">=</span> (</span>
+<span id="cb4-58"><a href="#cb4-58" aria-hidden="true" tabindex="-1"></a>        (<span class="st">"VirtualAddress"</span>, ctypes.c_uint32),</span>
+<span id="cb4-59"><a href="#cb4-59" aria-hidden="true" tabindex="-1"></a>        (<span class="st">"Size"</span>, ctypes.c_uint32),</span>
+<span id="cb4-60"><a href="#cb4-60" aria-hidden="true" tabindex="-1"></a>    )</span>
+<span id="cb4-61"><a href="#cb4-61" aria-hidden="true" tabindex="-1"></a><span class="co"># Optional Header Data Directory contains start of Cert address and total size of all certs</span></span>
+<span id="cb4-62"><a href="#cb4-62" aria-hidden="true" tabindex="-1"></a>cert_table <span class="op">=</span> DATA_Directory.from_buffer_copy(raw_cert_table)</span>
+<span id="cb4-63"><a href="#cb4-63" aria-hidden="true" tabindex="-1"></a><span class="bu">print</span>(<span class="st">"</span><span class="ch">\n</span><span class="st">Certificate Table VirtualAddress:"</span>, cert_table.VirtualAddress)</span>
+<span id="cb4-64"><a href="#cb4-64" aria-hidden="true" tabindex="-1"></a><span class="bu">print</span>(<span class="st">"Certificate Table Size:"</span>, cert_table.Size)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</details>
+<div class="cell-output cell-output-stdout">
+<pre><code>pe header offset : 132
+PE header info: 
+    Machine : 0x8664
+    NumberOfSections : 2
+    TimeDateStamp : 0
+    PointerToSymbolTable : 20480
+    NumberOfSymbols : 0
+    SizeOfOptionalHeader : 240
+    Characteristics : 0x30e
+Found a PE32+ image
+
+Certificate Table VirtualAddress: 20488
+Certificate Table Size: 1568</code></pre>
+</div>
+</div>
+<p>We found the Certificate Table starts at offset 20488 with a size of 1568 bytes. Now we can write our loop to read all certificates:</p>
+<div class="cell" data-execution_count="3">
+<details>
+<summary>Code</summary>
+<div class="sourceCode cell-code" id="cb6"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb6-1"><a href="#cb6-1" aria-hidden="true" tabindex="-1"></a><span class="co"># walk to cert table</span></span>
+<span id="cb6-2"><a href="#cb6-2" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb6-3"><a href="#cb6-3" aria-hidden="true" tabindex="-1"></a><span class="kw">class</span> Cert_Attribute(ctypes.Structure):</span>
+<span id="cb6-4"><a href="#cb6-4" aria-hidden="true" tabindex="-1"></a>    _fields_ <span class="op">=</span> (</span>
+<span id="cb6-5"><a href="#cb6-5" aria-hidden="true" tabindex="-1"></a>        (<span class="st">"dwLength"</span>, ctypes.c_uint32),</span>
+<span id="cb6-6"><a href="#cb6-6" aria-hidden="true" tabindex="-1"></a>        (<span class="st">"wRevision"</span>, ctypes.c_uint16),</span>
+<span id="cb6-7"><a href="#cb6-7" aria-hidden="true" tabindex="-1"></a>        (<span class="st">"wCertificateType"</span>, ctypes.c_uint16),</span>
+<span id="cb6-8"><a href="#cb6-8" aria-hidden="true" tabindex="-1"></a>    )</span>
+<span id="cb6-9"><a href="#cb6-9" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb6-10"><a href="#cb6-10" aria-hidden="true" tabindex="-1"></a>offset <span class="op">=</span> <span class="dv">0</span></span>
+<span id="cb6-11"><a href="#cb6-11" aria-hidden="true" tabindex="-1"></a>certs <span class="op">=</span> []</span>
+<span id="cb6-12"><a href="#cb6-12" aria-hidden="true" tabindex="-1"></a><span class="cf">while</span> offset <span class="op">&lt;</span> cert_table.Size:</span>
+<span id="cb6-13"><a href="#cb6-13" aria-hidden="true" tabindex="-1"></a>    <span class="bu">print</span>(<span class="st">"Cerificate at relative offset:"</span>, offset)</span>
+<span id="cb6-14"><a href="#cb6-14" aria-hidden="true" tabindex="-1"></a>    raw_cert <span class="op">=</span> signed_image[</span>
+<span id="cb6-15"><a href="#cb6-15" aria-hidden="true" tabindex="-1"></a>        cert_table.VirtualAddress</span>
+<span id="cb6-16"><a href="#cb6-16" aria-hidden="true" tabindex="-1"></a>        <span class="op">+</span> offset : cert_table.VirtualAddress</span>
+<span id="cb6-17"><a href="#cb6-17" aria-hidden="true" tabindex="-1"></a>        <span class="op">+</span> offset</span>
+<span id="cb6-18"><a href="#cb6-18" aria-hidden="true" tabindex="-1"></a>        <span class="op">+</span> ctypes.sizeof(Cert_Attribute)</span>
+<span id="cb6-19"><a href="#cb6-19" aria-hidden="true" tabindex="-1"></a>    ]</span>
+<span id="cb6-20"><a href="#cb6-20" aria-hidden="true" tabindex="-1"></a>    cert <span class="op">=</span> Cert_Attribute.from_buffer_copy(raw_cert)</span>
+<span id="cb6-21"><a href="#cb6-21" aria-hidden="true" tabindex="-1"></a>    <span class="bu">print</span>(<span class="st">"</span><span class="ch">\t</span><span class="st">cert.dwLength"</span>, cert.dwLength)</span>
+<span id="cb6-22"><a href="#cb6-22" aria-hidden="true" tabindex="-1"></a>    <span class="bu">print</span>(<span class="st">"</span><span class="ch">\t</span><span class="st">cert.wRevision"</span>, cert.wRevision)</span>
+<span id="cb6-23"><a href="#cb6-23" aria-hidden="true" tabindex="-1"></a>    <span class="bu">print</span>(<span class="st">"</span><span class="ch">\t</span><span class="st">cert.wCertificateType"</span>, cert.wCertificateType)</span>
+<span id="cb6-24"><a href="#cb6-24" aria-hidden="true" tabindex="-1"></a>    <span class="bu">print</span>(<span class="st">"</span><span class="ch">\t</span><span class="st">Cert attribute len: "</span>, ctypes.sizeof(Cert_Attribute))</span>
+<span id="cb6-25"><a href="#cb6-25" aria-hidden="true" tabindex="-1"></a>    pcks <span class="op">=</span> signed_image[</span>
+<span id="cb6-26"><a href="#cb6-26" aria-hidden="true" tabindex="-1"></a>        cert_table.VirtualAddress</span>
+<span id="cb6-27"><a href="#cb6-27" aria-hidden="true" tabindex="-1"></a>        <span class="op">+</span> offset</span>
+<span id="cb6-28"><a href="#cb6-28" aria-hidden="true" tabindex="-1"></a>        <span class="op">+</span> ctypes.sizeof(Cert_Attribute) : cert_table.VirtualAddress</span>
+<span id="cb6-29"><a href="#cb6-29" aria-hidden="true" tabindex="-1"></a>        <span class="op">+</span> offset</span>
+<span id="cb6-30"><a href="#cb6-30" aria-hidden="true" tabindex="-1"></a>        <span class="op">+</span> ctypes.sizeof(Cert_Attribute)</span>
+<span id="cb6-31"><a href="#cb6-31" aria-hidden="true" tabindex="-1"></a>        <span class="op">+</span> cert.dwLength </span>
+<span id="cb6-32"><a href="#cb6-32" aria-hidden="true" tabindex="-1"></a>    ]</span>
+<span id="cb6-33"><a href="#cb6-33" aria-hidden="true" tabindex="-1"></a>    certs.append(pcks)</span>
+<span id="cb6-34"><a href="#cb6-34" aria-hidden="true" tabindex="-1"></a>    pad_len <span class="op">=</span> (<span class="dv">8</span> <span class="op">-</span> ((offset <span class="op">+</span> cert.dwLength) <span class="op">%</span> <span class="dv">8</span>)) <span class="op">%</span> <span class="dv">8</span></span>
+<span id="cb6-35"><a href="#cb6-35" aria-hidden="true" tabindex="-1"></a>    offset <span class="op">+=</span> ctypes.sizeof(Cert_Attribute) <span class="op">+</span> cert.dwLength <span class="op">+</span> pad_len</span>
+<span id="cb6-36"><a href="#cb6-36" aria-hidden="true" tabindex="-1"></a>    <span class="bu">print</span>(<span class="st">"</span><span class="ch">\t</span><span class="st">Next offset in cert table: "</span>, offset)</span>
+<span id="cb6-37"><a href="#cb6-37" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb6-38"><a href="#cb6-38" aria-hidden="true" tabindex="-1"></a><span class="bu">print</span>(<span class="st">"We found a total of : "</span>, <span class="bu">len</span>(certs), <span class="st">"certificate(s)"</span>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</details>
+<div class="cell-output cell-output-stdout">
+<pre><code>Cerificate at relative offset: 0
+    cert.dwLength 1561
+    cert.wRevision 512
+    cert.wCertificateType 2
+    Cert attribute len:  8
+    Next offset in cert table:  1576
+We found a total of :  1 certificate(s)</code></pre>
+</div>
+</div>
+<p>Once we have the certificate then we want to store it as a binary file in order to use openSSL lib to extract cert information and perform signature verification.</p>
+<div class="cell" data-execution_count="4">
+<details>
+<summary>Code</summary>
+<div class="sourceCode cell-code" id="cb8"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb8-1"><a href="#cb8-1" aria-hidden="true" tabindex="-1"></a><span class="co"># Write cert to file</span></span>
+<span id="cb8-2"><a href="#cb8-2" aria-hidden="true" tabindex="-1"></a><span class="cf">for</span> i,c <span class="kw">in</span> <span class="bu">enumerate</span>(certs):</span>
+<span id="cb8-3"><a href="#cb8-3" aria-hidden="true" tabindex="-1"></a>    <span class="co"># write c as a binary file</span></span>
+<span id="cb8-4"><a href="#cb8-4" aria-hidden="true" tabindex="-1"></a>    <span class="cf">with</span> <span class="bu">open</span>(<span class="ss">f"image_cert_</span><span class="sc">{</span>i<span class="sc">}</span><span class="ss">.bin"</span>, mode<span class="op">=</span><span class="st">"wb"</span>) <span class="im">as</span> <span class="bu">file</span>:  <span class="co"># b is important -&gt; binary</span></span>
+<span id="cb8-5"><a href="#cb8-5" aria-hidden="true" tabindex="-1"></a>        <span class="bu">file</span>.write(c)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</details>
+</div>
 
 
 

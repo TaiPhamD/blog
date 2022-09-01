@@ -4,11 +4,15 @@ author: "Peter Pham"
 date: "2022-09-01"
 categories: [Secure Boot, UEFI, EDK2, openSSL]
 image: "uefi_logo.png"
+format:
+  html:
+    code-fold: true
+jupyter: python3
 ---
 
-Secure Boot has becoming more popular in the past few years in the consumer PC segment due to the new windows 11 [Secure Boot requirement](https://www.windowscentral.com/how-enable-secure-boot-pc-install-windows-11). I wanted to learn more about Secure Boot by implementing part of this security validation process using Python as proof of concept.
+Secure Boot has becoming more popular in the past few years in the consumer PC segment due to the new windows 11 [Secure Boot requirement](https://www.windowscentral.com/how-enable-secure-boot-pc-install-windows-11). I wanted to learn more about Secure Boot by implementing part of UEFI security validation process using Python as proof of concept.
 
-Following this [tutorial](https://github.com/perez987/OpenCore-UEFI-Secure-Boot), I have successfully enrolled my own certificate for self-signing the [OpenCore](https://github.com/acidanthera/OpenCorePkg) bootloader to support Secure Boot.
+Following this [tutorial](https://github.com/perez987/OpenCore-UEFI-Secure-Boot), I have successfully enrolled my own certificate for self-signing the [OpenCore](https://github.com/acidanthera/OpenCorePkg) bootloader to support Secure Boot. 
 
 Let's explore what happens when you sign an UEFI image. I recommend using an Ubuntu VM to have access to [sbsign tool](https://manpages.ubuntu.com/manpages/xenial/man1/sbsign.1.html) for UEFI development so you can follow the below commands: 
 
@@ -23,3 +27,143 @@ openssl req -new -x509 -newkey rsa:2048 -sha256 -days 365 -subj "/CN=Image Signi
 sbsign --key ISK.key --cert ISK.pem opencore/X64/EFI/BOOT/BOOTx64.efi --output opencore/X64/EFI/BOOT/BOOTx64_signed.efi
 ```
 
+We can run the following Python code to see the file size differences:
+
+```{python}
+# Print file size of unsigned and signed image
+
+with open("opencore/X64/EFI/BOOT/BOOTx64.efi", mode="rb") as file:  # b is important -> binary
+    unsigned_image = file.read()
+    print("Unsigned image file size :", len(unsigned_image))
+
+with open("opencore/X64/EFI/BOOT/BOOTx64_signed.efi", mode="rb") as file:  # b is important -> binary
+    signed_image = file.read()
+    print("Signed image file size :", len(signed_image))
+```
+
+As we can see the signed image increased by 1572 Bytes. This is because the signature is added to the original image. Now we will try to extract the signed certificate from the signed image. The UEFI image uses a Microsoft PE file system as described [here](https://docs.microsoft.com/en-us/windows/win32/debug/pe-format). We can extract the certificate using the following steps:
+
+  - Locate the PE header by finding PE header offset from **0x3C** file offset
+  - Read Optional Header immediate after the PE header to read the **Magic** code to determine offset for PE vs PE+ to get to the **Certificate Table**
+  - Extract each certificate by assuming the first certificate will start at the Certificate Table VirtualAddress. Then the next certificate will be 8-byte aligned from the end of the previous certificate. We will loop until the offset exceed the Certificate Table VirtualAddress + Size.
+```{python}
+# per microsoft PE/COFF spec, the first 4 bytes at 0x3c offset will point to the start of the PE header
+pe_header = signed_image[0x3C : 0x3C + 4]
+pe_header_offset = int.from_bytes(pe_header, "little") + 4
+print("pe header offset :", pe_header_offset)
+
+# Decode PE header
+import ctypes
+class PE_header(ctypes.Structure):
+    _fields_ = (
+        ("Machine", ctypes.c_uint16),
+        ("NumberOfSections", ctypes.c_uint16),
+        ("TimeDateStamp", ctypes.c_uint32),
+        ("PointerToSymbolTable", ctypes.c_uint32),
+        ("NumberOfSymbols", ctypes.c_uint32),
+        ("SizeOfOptionalHeader", ctypes.c_uint16),
+        ("Characteristics", ctypes.c_uint16),
+    )
+
+raw_pe_header = signed_image[pe_header_offset : pe_header_offset + ctypes.sizeof(PE_header)]
+pe_header = PE_header.from_buffer_copy(raw_pe_header)
+
+# Print PE header
+print("PE header info: ")
+print("\tMachine :", hex(pe_header.Machine))
+print("\tNumberOfSections :", pe_header.NumberOfSections)
+print("\tTimeDateStamp :", pe_header.TimeDateStamp)
+print("\tPointerToSymbolTable :", pe_header.PointerToSymbolTable)
+print("\tNumberOfSymbols :", pe_header.NumberOfSymbols)
+print("\tSizeOfOptionalHeader :", pe_header.SizeOfOptionalHeader)
+print("\tCharacteristics :", hex(pe_header.Characteristics))
+
+
+# Decode Magic from optional header
+
+raw_optional_header = signed_image[
+    pe_header_offset
+    + ctypes.sizeof(PE_header) : pe_header_offset
+    + ctypes.sizeof(PE_header)
+    + pe_header.SizeOfOptionalHeader
+]
+magic = raw_optional_header[0:2]
+
+
+if magic == b"\x0b\x01":
+    print("Found a PE32 image")
+    cert_table_offset = 128
+elif magic == b"\x0b\x02":
+    print("Found a PE32+ image")
+    cert_table_offset = 144
+else:
+    print("Unknown PE magic")
+    exit()
+raw_cert_table = raw_optional_header[cert_table_offset : cert_table_offset + 8]
+
+# Decode Optional Header Data Directory to get certificates
+class DATA_Directory(ctypes.Structure):
+    _fields_ = (
+        ("VirtualAddress", ctypes.c_uint32),
+        ("Size", ctypes.c_uint32),
+    )
+# Optional Header Data Directory contains start of Cert address and total size of all certs
+cert_table = DATA_Directory.from_buffer_copy(raw_cert_table)
+print("\nCertificate Table VirtualAddress:", cert_table.VirtualAddress)
+print("Certificate Table Size:", cert_table.Size)
+
+```
+
+We found the Certificate Table starts at offset 20488 with a size of 1568 bytes. Now we can write our loop to read all certificates:
+
+```{python}
+# walk to cert table
+
+class Cert_Attribute(ctypes.Structure):
+    _fields_ = (
+        ("dwLength", ctypes.c_uint32),
+        ("wRevision", ctypes.c_uint16),
+        ("wCertificateType", ctypes.c_uint16),
+    )
+
+offset = 0
+certs = []
+while offset < cert_table.Size:
+    print("Cerificate at relative offset:", offset)
+    raw_cert = signed_image[
+        cert_table.VirtualAddress
+        + offset : cert_table.VirtualAddress
+        + offset
+        + ctypes.sizeof(Cert_Attribute)
+    ]
+    cert = Cert_Attribute.from_buffer_copy(raw_cert)
+    print("\tcert.dwLength", cert.dwLength)
+    print("\tcert.wRevision", cert.wRevision)
+    print("\tcert.wCertificateType", cert.wCertificateType)
+    print("\tCert attribute len: ", ctypes.sizeof(Cert_Attribute))
+    pcks = signed_image[
+        cert_table.VirtualAddress
+        + offset
+        + ctypes.sizeof(Cert_Attribute) : cert_table.VirtualAddress
+        + offset
+        + ctypes.sizeof(Cert_Attribute)
+        + cert.dwLength 
+    ]
+    certs.append(pcks)
+    pad_len = (8 - ((offset + cert.dwLength) % 8)) % 8
+    offset += ctypes.sizeof(Cert_Attribute) + cert.dwLength + pad_len
+    print("\tNext offset in cert table: ", offset)
+
+print("We found a total of : ", len(certs), "certificate(s)")
+```
+
+Once we have the certificate then we want to store it as a binary file in order to use openSSL lib to extract cert information and perform signature verification.
+
+```{python}
+# Write cert to file
+for i,c in enumerate(certs):
+    # write c as a binary file
+    with open(f"image_cert_{i}.bin", mode="wb") as file:  # b is important -> binary
+        file.write(c)
+
+```

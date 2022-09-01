@@ -2,6 +2,8 @@
   {
     "listing": "/index.html",
     "items": [
+      "/posts/uefi-secure-boot/opencore/Docs/Changelog.html",
+      "/posts/uefi-secure-boot/opencore/Utilities/macserial/FORMAT.html",
       "/posts/uefi-secure-boot/index.html"
     ]
   }
