@@ -1,5 +1,5 @@
 ---
-title: "taiphamd_blog"
+title: "My Personal Blog"
 listing:
   contents: posts
   sort: "date desc"
