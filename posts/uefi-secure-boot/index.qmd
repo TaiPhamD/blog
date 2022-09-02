@@ -45,7 +45,7 @@ As we can see the signed image increased by 1572 Bytes. This is because the sign
 
   - Locate the PE header by finding PE header offset from **0x3C** file offset
   - Read Optional Header immediate after the PE header to read the **Magic** code to determine offset for PE vs PE+ to get to the **Certificate Table**
-  - Extract each certificate by assuming the first certificate will start at the Certificate Table VirtualAddress. Then the next certificate will be 8-byte aligned from the end of the previous certificate. We will loop until the offset exceed the Certificate Table VirtualAddress + Size.
+  - Extract each certificate by assuming the first certificate will start at the Certificate Table VirtualAddress. Then the next certificate will be 8-byte aligned from the end of the previous certificate. We will loop until the offset exceeds the Certificate Table Size.
 ```{python}
 # per microsoft PE/COFF spec, the first 4 bytes at 0x3c offset will point to the start of the PE header
 pe_header = signed_image[0x3C : 0x3C + 4]
@@ -157,13 +157,47 @@ while offset < cert_table.Size:
 print("We found a total of : ", len(certs), "certificate(s)")
 ```
 
-Once we have the certificate then we want to store it as a binary file in order to use openSSL lib to extract cert information and perform signature verification.
+Once we have the certificate then we can parse the certificate using pyasn1 module.
+
 
 ```{python}
-# Write cert to file
-for i,c in enumerate(certs):
-    # write c as a binary file
-    with open(f"image_cert_{i}.bin", mode="wb") as file:  # b is important -> binary
-        file.write(c)
+# See also https://github.com/etingof/pyasn1-modules/blob/master/tools/pkcs7dump.py
+from pyasn1.codec.der import decoder, encoder
+from pyasn1_modules import rfc2315 # PKCS#7
+from pyasn1_modules import rfc2459 # X.509
+from pyasn1_modules import rfc2437 # PKCS#1 (RSA)
+from cryptography.hazmat.primitives.asymmetric import rsa, padding, utils
+from cryptography.hazmat.primitives import hashes
+from cryptography import x509
+import hashlib
+# Parse just the first cert
+c = certs[0]
+# Extract the content field
+print("Decoding certificate\n")
+content_info, _ = decoder.decode(c, asn1Spec=rfc2315.ContentInfo())
+print("contentType: ", content_info.getComponentByName("contentType"))
+# Decode the content as signed_data
+signed_data, _ = decoder.decode(content_info.getComponentByName("content"), asn1Spec=rfc2315.SignedData())
+print(signed_data["contentInfo"])
+print(signed_data["signerInfos"])
 
+```
+
+There are several steps in the UEFI image verification process but we will just go over 2 of them:
+
+- Compute the hash of the PE image per MS specification
+- Compute the sha256 of the authenticatedAttributes (rfc2315). Then encode it with our private key to get the computed encoded digest. This computed encoded digest should match the encryptedDigest hex string in the certificate.
+
+Next we can manually compute the sha256 hash of the rfc2315 authenticatedAttributes:
+    
+```{python}
+# Extract authenticatedAttributes
+authenticated_attributes_orig = signed_data["signerInfos"][0]["authenticatedAttributes"]
+# Get rid of the implicit tag authenticatedAttributes (it's not supposed to be included in the signature)
+authenticated_attributes = rfc2315.Attributes()
+authenticated_attributes.extend(authenticated_attributes_orig)
+print(authenticated_attributes)
+auth_attr_raw = encoder.encode(authenticated_attributes)
+digest = hashlib.sha256(auth_attr_raw).digest()
+print("SHA256 of authenticated_attributes: ", rfc2315.Digest(digest).prettyPrint())
 ```
