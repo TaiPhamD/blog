@@ -4,7 +4,7 @@
     "href": "posts/macos-m1-stable-diffusion/index.html",
     "title": "Apple Silicon Stable-Diffusion",
     "section": "",
-    "text": "Running stable-diffusion after initial setup\n\nOpen macOS terminal:\n\n# go to the path where you cloned stable-diffusion\ncd stable-diffusion\npython scripts/dream.py --web"
+    "text": "Running stable-diffusion after initial setup\n\nOpen macOS terminal:\n\n# go to the path where you cloned stable-diffusion\ncd stable-diffusion\nconda activate ldm\npython scripts/dream.py --web"
   },
   {
     "objectID": "posts/uefi-secure-boot/index.html",
