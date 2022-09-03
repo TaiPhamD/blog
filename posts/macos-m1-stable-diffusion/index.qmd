@@ -55,5 +55,6 @@ python scripts/dream.py --web
 ```bash
 # go to the path where you cloned stable-diffusion
 cd stable-diffusion
+conda activate ldm
 python scripts/dream.py --web
 ``` 
