@@ -4,7 +4,7 @@
     "href": "posts/macos-m1-stable-diffusion/index.html",
     "title": "Apple Silicon Stable-Diffusion",
     "section": "",
-    "text": "Install Miniconda for apple m1 (make sure to download the .pkg for m1 and not the intel x64 version): https://docs.conda.io/en/latest/miniconda.html\nClone stable difusion using lstein branch to support m1 and web host UI features (Dream.py). Open macOS terminal:\n\ngit clone https://github.com/lstein/stable-diffusion.git\n\nCreate folder to copy the model sd-v1-4-full-ema.ckpt to this path. Rename the model to model.ckpt\n\nmkdir -p models/ldm/stable-diffusion-v1/\n\nInstall dependencies to run stable-diffusion\n\ncurl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh\nsource \"$HOME/.cargo/env\"\nPIP_EXISTS_ACTION=w CONDA_SUBDIR=osx-arm64 conda env create -f environment-mac.yaml\nconda activate ldm\npython scripts/preload_models.py\n\nRun stable-diffusion\n\npython scripts/dream.py"
+    "text": "Running stable-diffusion after initial setup\n\nOpen macOS terminal:\n\n# go to the path where you cloned stable-diffusion\ncd stable-diffusion\npython scripts/dream.py --web"
   },
   {
     "objectID": "posts/uefi-secure-boot/index.html",

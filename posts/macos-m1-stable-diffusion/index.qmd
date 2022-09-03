@@ -18,26 +18,42 @@ https://docs.conda.io/en/latest/miniconda.html
 2. Clone stable difusion using lstein branch to support m1 and web host UI features (Dream.py). Open macOS terminal:
 ```bash
 git clone https://github.com/corajr/stable-diffusion.git
-
-#git clone https://github.com/lstein/stable-diffusion.git
+cd stable-diffusion
 ```
 
-3. Create folder to copy the model **sd-v1-4-full-ema.ckpt** to this path. Rename the model to **model.ckpt**
+3. Download the pretrained model from https://huggingface.co/CompVis/stable-diffusion-v-1-4-original . Supposedly **sd-v1-4-full-ema.ckpt** gives better result but the file size is ~7.7GB.
+
+4. Create folder to copy the model **sd-v1-4-full-ema.ckpt** to this path. Rename the model to **model.ckpt**
 ```bash
 mkdir -p models/ldm/stable-diffusion-v1/
+# This assumes you downloaded sd-v1-4-full-ema.ckpt to ~/Downloads
+mv ~/Downloads/sd-v1-4-full-ema.ckpt models/ldm/stable-diffusion-v1/model.ckpt
 ```
 
-4. Install dependencies to run stable-diffusion
+5. Install dependencies to run stable-diffusion. Copy these command lines 1 at a time:
 ```bash
 curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
+
 source "$HOME/.cargo/env"
+
 PIP_EXISTS_ACTION=w CONDA_SUBDIR=osx-arm64 conda env create -f environment-mac.yaml
+
 conda activate ldm
+
 python scripts/preload_models.py
 ```
 
-5. Run stable-diffusion
+6. Run stable-diffusion with --web parameter to enable web UI
 
 ```bash
-python scripts/dream.py
+python scripts/dream.py --web
 ```
+
+# Running stable-diffusion after initial setup
+
+1. Open macOS terminal:
+```bash
+# go to the path where you cloned stable-diffusion
+cd stable-diffusion
+python scripts/dream.py --web
+``` 
