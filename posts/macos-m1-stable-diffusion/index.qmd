@@ -49,6 +49,8 @@ python scripts/preload_models.py
 python scripts/dream.py --web
 ```
 
+7. Open browser and go to http://localhost:9090
+
 # Running stable-diffusion after initial setup
 
 1. Open macOS terminal:
