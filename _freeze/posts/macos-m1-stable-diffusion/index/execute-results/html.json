@@ -1,0 +1,11 @@
+{
+  "hash": "f28fbbb9e3bda3670293d8d1ecb70906",
+  "result": {
+    "markdown": "---\ntitle: Apple Silicon Stable-Diffusion\nauthor: Peter Pham\ndate: '2022-09-03'\ncategories:\n  - Pytorch\n  - M1\n  - AI\nimage: uefi_logo.png\nformat:\n  html:\n    code-fold: true\n---\n\n# Summary of install macOS stable diffusion\n\n1. Install Miniconda for apple m1 (make sure to download the .pkg for m1 and not the intel x64 version):\nhttps://docs.conda.io/en/latest/miniconda.html\n\n2. Clone stable difusion using lstein branch to support m1 and web host UI features (Dream.py). Open macOS terminal:\n```bash\ngit clone https://github.com/lstein/stable-diffusion.git\n```\n\n3. Create folder to copy the model **sd-v1-4-full-ema.ckpt** to this path. Rename the model to **model.ckpt**\n```bash\nmkdir -p models/ldm/stable-diffusion-v1/\n```\n\n4. Install dependencies to run stable-diffusion\n```bash\ncurl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh\nsource \"$HOME/.cargo/env\"\nPIP_EXISTS_ACTION=w CONDA_SUBDIR=osx-arm64 conda env create -f environment-mac.yaml\nconda activate ldm\npython scripts/preload_models.py\n```\n\n5. Run stable-diffusion\n\n```bash\npython scripts/dream.py\n```\n\n",
+    "supporting": [
+      "index_files"
+    ],
+    "filters": [],
+    "includes": {}
+  }
+}

@@ -2,6 +2,8 @@
   {
     "listing": "/index.html",
     "items": [
+      "/posts/uefi-secure-boot/verify.html",
+      "/posts/macos-m1-stable-diffusion/index.html",
       "/posts/uefi-secure-boot/index.html"
     ]
   }
